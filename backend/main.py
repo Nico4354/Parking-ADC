@@ -63,6 +63,13 @@ class ClimaCreate(BaseModel):
     temperatura: float
     humedad: float
 
+# Variable en memoria RAM para el clima en tiempo real
+clima_live = {
+    "temperatura": None,
+    "humedad": None,
+    "fecha_hora": None
+}
+
 # Endpoints
 @app.post("/api/carros")
 def actualizar_carros(data: CarrosUpdate, db: Session = Depends(get_db)):
@@ -89,26 +96,53 @@ def obtener_estado(db: Session = Depends(get_db)):
 
 @app.post("/api/clima")
 def registrar_clima(data: ClimaCreate, db: Session = Depends(get_db)):
-    nuevo_clima = RegistroClima(temperatura=data.temperatura, humedad=data.humedad)
-    db.add(nuevo_clima)
-    db.commit()
-    db.refresh(nuevo_clima)
-    return {"message": "Clima registrado con éxito", "id": nuevo_clima.id}
+    global clima_live
+    ahora = datetime.utcnow()
+    
+    # 1. SIEMPRE actualizamos la memoria RAM (Para que el frontend lo vea en tiempo real)
+    clima_live["temperatura"] = data.temperatura
+    clima_live["humedad"] = data.humedad
+    clima_live["fecha_hora"] = ahora
+    
+    # 2. Verificamos la Base de Datos para ver si ya pasó 1 minuto
+    ultimo_registro = db.query(RegistroClima).order_by(RegistroClima.id.desc()).first()
+    
+    guardar_en_bd = False
+    if not ultimo_registro:
+        guardar_en_bd = True # Si la BD está vacía, guardamos el primer registro
+    else:
+        # Calculamos los segundos que han pasado desde el último guardado
+        diferencia_segundos = (ahora - ultimo_registro.fecha_hora).total_seconds()
+        if diferencia_segundos >= 60:
+            guardar_en_bd = True
+            
+    # 3. Solo escribimos en el disco (PostgreSQL/SQLite) si pasó 1 minuto
+    if guardar_en_bd:
+        nuevo_clima = RegistroClima(temperatura=data.temperatura, humedad=data.humedad, fecha_hora=ahora)
+        db.add(nuevo_clima)
+        db.commit()
+        return {"message": "Clima guardado en la BD y en memoria", "bd_saved": True}
+    
+    return {"message": "Clima actualizado solo en memoria (Tiempo real)", "bd_saved": False}
 
 @app.get("/api/dashboard")
 def obtener_dashboard(db: Session = Depends(get_db)):
-    # 1. Carros actuales
+    # 1. Carros actuales (Este sigue consultando la BD porque cambia poco)
     estado = db.query(EstadoEstacionamiento).first()
     carros = estado.carros_adentro if estado else 0
     
-    # 2. Último registro de clima (ordenando por ID descendente)
-    ultimo_clima = db.query(RegistroClima).order_by(RegistroClima.id.desc()).first()
+    # 2. Último registro de clima (Lo sacamos directo de la RAM, es más rápido)
+    global clima_live
     
+    # Si la memoria RAM acaba de despertar (está vacía), jalamos el último dato de la BD por si acaso
+    if clima_live["temperatura"] is None:
+        ultimo_clima = db.query(RegistroClima).order_by(RegistroClima.id.desc()).first()
+        if ultimo_clima:
+            clima_live["temperatura"] = ultimo_clima.temperatura
+            clima_live["humedad"] = ultimo_clima.humedad
+            clima_live["fecha_hora"] = ultimo_clima.fecha_hora
+
     return {
         "carros_actuales": carros,
-        "ultimo_clima": {
-            "temperatura": ultimo_clima.temperatura if ultimo_clima else None,
-            "humedad": ultimo_clima.humedad if ultimo_clima else None,
-            "fecha_hora": ultimo_clima.fecha_hora if ultimo_clima else None
-        }
+        "ultimo_clima": clima_live
     }
