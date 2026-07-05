@@ -3,9 +3,9 @@ import time
 import requests
 
 # === VARIABLES GLOBALES DE CONFIGURACIÓN ===
-PORT = "COM3"          # Cambiar por el puerto correcto asignado a tu Arduino (ej. COM5, /dev/ttyUSB0)
+PORT = "COM8"          # Cambiar por el puerto correcto asignado a tu Arduino (ej. COM5, /dev/ttyUSB0)
 BAUD_RATE = 9600       # Debe coincidir con el Serial.begin() de tu Arduino
-API_URL = "http://127.0.0.1:8000" # URL base de la API FastAPI
+API_URL = "https://parking-adc.onrender.com" # URL base de la API FastAPI
 
 def parsear_y_enviar(linea: str):
     """Parsea la línea recibida del Arduino y hace el POST correspondiente a la API."""
