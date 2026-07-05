@@ -124,7 +124,22 @@
                     </div>
                 </div>
 
-                <div class="mt-8 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 flex items-center gap-2">
+                <!-- Nuevo bloque: Acciones Recomendadas -->
+                <div
+                    class="w-full mt-6 mb-2 p-4 bg-slate-800/50 rounded-xl border border-slate-700 flex flex-col gap-2">
+                    <span class="text-xs text-slate-500 uppercase tracking-wider font-bold flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Acción Sugerida
+                    </span>
+                    <span id="clima-accion" class="text-sm font-medium text-slate-300">
+                        Analizando condiciones...
+                    </span>
+                </div>
+
+                <div class="mt-4 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 flex items-center gap-2">
                     <span class="relative flex h-2.5 w-2.5">
                         <span id="clima-ping"
                             class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden"></span>
@@ -163,6 +178,7 @@
             climaStatus: document.getElementById('clima-status'),
             climaPing: document.getElementById('clima-ping'),
             climaDot: document.getElementById('clima-dot'),
+            climaAccion: document.getElementById('clima-accion'),
             errorBanner: document.getElementById('error-banner')
         };
 
@@ -211,6 +227,29 @@
                         ui.climaStatus.textContent = 'Última act: ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     }
 
+                    // --- LÓGICA DE ACCIONES RECOMENDADAS ---
+                    let temp = clima.temperatura;
+                    let hum = clima.humedad;
+                    let recomendacion = "";
+                    let colorClase = "text-slate-300";
+
+                    if (temp >= 28) {
+                        recomendacion = "Alta temperatura. Sugerencia: Desplegar toldos de sombra en zonas expuestas.";
+                        colorClase = "text-yellow-400";
+                    } else if (hum >= 80) {
+                        recomendacion = "Alta humedad. Sugerencia: Activar extractores y señalizar piso resbaladizo.";
+                        colorClase = "text-blue-400";
+                    } else if (temp <= 15 && hum >= 70) {
+                        recomendacion = "Frío y húmedo. Sugerencia: Posible neblina, encender faros antiniebla del recinto.";
+                        colorClase = "text-indigo-400";
+                    } else {
+                        recomendacion = "Clima óptimo. No se requieren acciones adicionales.";
+                        colorClase = "text-emerald-400";
+                    }
+
+                    ui.climaAccion.textContent = recomendacion;
+                    ui.climaAccion.className = `text-sm font-medium transition-colors duration-500 ${colorClase}`;
+
                     // Indicador de conexión verde
                     ui.climaDot.classList.replace('bg-slate-500', 'bg-emerald-400');
                     ui.climaDot.classList.replace('bg-red-500', 'bg-emerald-400');
@@ -219,6 +258,9 @@
                     ui.tempVal.textContent = '--';
                     ui.humVal.textContent = '--';
                     ui.climaStatus.textContent = 'Esperando lecturas...';
+
+                    ui.climaAccion.textContent = "Esperando datos...";
+                    ui.climaAccion.className = "text-sm font-medium text-slate-500";
 
                     ui.climaDot.classList.replace('bg-emerald-400', 'bg-slate-500');
                     ui.climaDot.classList.replace('bg-red-500', 'bg-slate-500');
@@ -246,6 +288,9 @@
                 ui.climaDot.classList.replace('bg-emerald-400', 'bg-red-500');
                 ui.climaDot.classList.replace('bg-slate-500', 'bg-red-500');
                 ui.climaPing.classList.add('hidden');
+
+                ui.climaAccion.textContent = "Desconectado";
+                ui.climaAccion.className = "text-sm font-medium text-slate-500";
 
                 // Mostrar Banner
                 ui.errorBanner.classList.remove('hidden');

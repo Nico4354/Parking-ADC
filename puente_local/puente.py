@@ -2,104 +2,74 @@ import serial
 import time
 import requests
 
-# === VARIABLES GLOBALES DE CONFIGURACIÓN ===
-PORT = "COM8"          # Cambiar por el puerto correcto asignado a tu Arduino (ej. COM5, /dev/ttyUSB0)
-BAUD_RATE = 9600       # Debe coincidir con el Serial.begin() de tu Arduino
-API_URL = "https://parking-adc.onrender.com" # URL base de la API FastAPI
+# ================= CONFIGURACIÓN =================
+PORT = "COM8"        
+BAUD_RATE = 9600     
+BASE_URL = "https://parking-adc.onrender.com"
+# =================================================
 
-def parsear_y_enviar(linea: str):
-    """Parsea la línea recibida del Arduino y hace el POST correspondiente a la API."""
-    linea = linea.strip()
-    
-    # --- Caso 1: Ocupación de Vehículos ---
-    if linea.startswith("ESTADO:"):
-        try:
-            # Se espera formato: "ESTADO:X" (ej. "ESTADO:3")
-            _, valor = linea.split(":", 1)
-            carros = int(valor.strip())
-            
-            respuesta = requests.post(
-                f"{API_URL}/api/carros",
-                json={"carros_adentro": carros},
-                timeout=5
-            )
-            print(f"[✓ OK] API ESTADO -> Carros: {carros} | Código: {respuesta.status_code}")
-            
-        except ValueError:
-            print(f"[! WARN] Formato numérico incorrecto en ESTADO: '{linea}'")
-        except requests.RequestException as e:
-            print(f"[✗ ERROR RED] Falló envío de ESTADO a la API: {e}")
-
-    # --- Caso 2: Registro de Clima ---
-    elif linea.startswith("CLIMA:"):
-        try:
-            # Se espera formato: "CLIMA:T,H" (ej. "CLIMA:24.5,60.2")
-            _, valores = linea.split(":", 1)
-            temp_str, hum_str = valores.split(",", 1)
-            
-            temperatura = float(temp_str.strip())
-            humedad = float(hum_str.strip())
-            
-            respuesta = requests.post(
-                f"{API_URL}/api/clima",
-                json={"temperatura": temperatura, "humedad": humedad},
-                timeout=5
-            )
-            print(f"[✓ OK] API CLIMA -> Temp: {temperatura}°C, Hum: {humedad}% | Código: {respuesta.status_code}")
-            
-        except ValueError:
-            print(f"[! WARN] Formato numérico incorrecto en CLIMA: '{linea}'")
-        except requests.RequestException as e:
-            print(f"[✗ ERROR RED] Falló envío de CLIMA a la API: {e}")
-            
-    else:
-        # Logs de depuración o líneas malformadas
-        if len(linea) > 0:
-            print(f"[ARDUINO] {linea}")
-
-def main():
-    print("="*50)
-    print("Iniciando Puente Local: Arduino <-> Nube")
+def iniciar_puente():
+    print("=" * 50)
+    print("Iniciando Puente Local Bidireccional")
     print(f"Escuchando Puerto: {PORT} a {BAUD_RATE} baudios")
-    print(f"Enviando datos a : {API_URL}")
-    print("="*50)
-    
-    # Bucle principal de reconexión
+    print(f"Conectado a la Nube: {BASE_URL}")
+    print("=" * 50)
+
     while True:
         try:
-            # Intenta abrir el puerto serial
-            with serial.Serial(PORT, BAUD_RATE, timeout=2) as ser:
-                print(f"\n[INFO] 🔌 Conectado exitosamente a {PORT}.")
-                
-                # Bucle de lectura continua
-                while True:
-                    if ser.in_waiting > 0:
+            ser = serial.Serial(PORT, BAUD_RATE, timeout=1)
+            time.sleep(2)  # Pausa para que el Arduino reinicie tras abrir el puerto
+            print(f"\n[INFO] 🔌 Conectado exitosamente a {PORT}.")
+
+            while True:
+                if ser.in_waiting > 0:
+                    linea = ser.readline().decode('utf-8', errors='ignore').strip()
+                    if not linea:
+                        continue
+                    
+                    # 1. SOLICITUD DE SINCRONIZACIÓN (NUEVO)
+                    if linea == "SYNC_REQUEST":
+                        print("[INFO] 🔄 Arduino solicitó sincronización inicial...")
                         try:
-                            # Leer línea completa
-                            linea_raw = ser.readline()
-                            # Decodificar omitiendo errores de caracteres raros (ruido eléctrico)
-                            linea_decodificada = linea_raw.decode('utf-8', errors='ignore')
-                            
-                            if linea_decodificada:
-                                parsear_y_enviar(linea_decodificada)
-                                
+                            res = requests.get(f"{BASE_URL}/api/estado", timeout=5)
+                            if res.status_code == 200:
+                                carros_db = res.json().get("carros_adentro", 0)
+                                # Enviar dato al Arduino con el formato SYNC:X
+                                comando = f"SYNC:{carros_db}\n"
+                                ser.write(comando.encode('utf-8'))
+                                print(f"[✓ OK] Sincronización exitosa. Restaurando Arduino a {carros_db} carros.")
                         except Exception as e:
-                            print(f"[! WARN] Error leyendo o decodificando serial: {e}")
-                    
-                    # Pequeña pausa para evitar usar 100% de CPU
-                    time.sleep(0.05)
-                    
-        except serial.SerialException as e:
+                            print(f"[✗ ERR] Falló la sincronización con la BD: {e}")
+
+                    # 2. ACTUALIZACIÓN DE ESTADO
+                    elif linea.startswith("ESTADO:"):
+                        try:
+                            valor = int(linea.split(":")[1])
+                            payload = {"carros_adentro": valor}
+                            res = requests.post(f"{BASE_URL}/api/carros", json=payload, timeout=5)
+                            print(f"[✓ OK] API ESTADO -> Carros: {valor} | Código: {res.status_code}")
+                        except Exception as e:
+                            print(f"[✗ ERR] Error enviando ESTADO: {e}")
+
+                    # 3. ACTUALIZACIÓN DE CLIMA
+                    elif linea.startswith("CLIMA:"):
+                        try:
+                            datos = linea.split(":")[1].split(",")
+                            temp = float(datos[0])
+                            hum = float(datos[1])
+                            payload = {"temperatura": temp, "humedad": hum}
+                            res = requests.post(f"{BASE_URL}/api/clima", json=payload, timeout=5)
+                            print(f"[✓ OK] API CLIMA -> Temp: {temp}°C, Hum: {hum}% | Código: {res.status_code}")
+                        except Exception as e:
+                            print(f"[✗ ERR] Error enviando CLIMA: {e}")
+
+        except serial.SerialException:
             print(f"[✗ DESCONECTADO] No se puede abrir o se perdió la conexión en {PORT}.")
             print("Reintentando en 3 segundos...")
             time.sleep(3)
         except KeyboardInterrupt:
-            print("\n[INFO] Programa detenido por el usuario.")
+            print("\n[INFO] Deteniendo el puente local de forma segura...")
             break
-        except Exception as e:
-            print(f"[✗ CRÍTICO] Error inesperado: {e}")
-            print("Reintentando en 3 segundos...")
-            time.sleep(3)
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    iniciar_puente()
