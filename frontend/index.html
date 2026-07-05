@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Parking Dashboard</title>
+    <!-- Tailwind CSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        cardBg: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Importar fuente Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="max-w-4xl w-full">
+        
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
+                IoT Parking Dashboard
+            </h1>
+            <p class="text-slate-400 font-medium">Monitoreo en tiempo real</p>
+        </header>
+
+        <!-- Grid Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Tarjeta: Ocupación Actual -->
+            <div class="bg-cardBg rounded-3xl shadow-xl border border-slate-700/50 p-8 flex flex-col items-center justify-center transition-all duration-300 hover:shadow-2xl hover:border-slate-600">
+                <h2 class="text-xl font-semibold text-slate-300 mb-6 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Ocupación Actual
+                </h2>
+                
+                <!-- Círculo de progreso visual -->
+                <div id="ocupacion-circle" class="relative flex items-center justify-center w-56 h-56 rounded-full border-[10px] border-slate-700 shadow-inner transition-colors duration-700 ease-in-out">
+                    <div class="text-center flex items-baseline gap-1">
+                        <span id="carros-count" class="text-7xl font-black text-slate-100 transition-colors duration-700">--</span>
+                        <span class="text-3xl font-bold text-slate-500">/ 5</span>
+                    </div>
+                </div>
+                
+                <div id="ocupacion-status" class="mt-8 px-4 py-1.5 rounded-full bg-slate-800 text-slate-300 text-sm font-semibold tracking-wide border border-slate-700">
+                    Conectando...
+                </div>
+            </div>
+
+            <!-- Tarjeta: Clima Local -->
+            <div class="bg-cardBg rounded-3xl shadow-xl border border-slate-700/50 p-8 flex flex-col items-center justify-center transition-all duration-300 hover:shadow-2xl hover:border-slate-600">
+                <h2 class="text-xl font-semibold text-slate-300 mb-8 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                    Clima Local
+                </h2>
+                
+                <div class="w-full flex justify-between items-center px-4">
+                    <!-- Temperatura -->
+                    <div class="flex flex-col items-center group">
+                        <div class="p-3 bg-slate-800 rounded-2xl mb-4 group-hover:bg-slate-700 transition-colors">
+                            <svg class="w-10 h-10 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        </div>
+                        <div class="flex items-start">
+                            <span id="temp-val" class="text-5xl font-bold text-slate-100">--</span>
+                            <span class="text-xl text-slate-400 ml-1 mt-1">°C</span>
+                        </div>
+                        <span class="text-xs text-slate-500 uppercase tracking-wider mt-2 font-semibold">Temperatura</span>
+                    </div>
+                    
+                    <!-- Divisor -->
+                    <div class="h-24 w-px bg-slate-700/60"></div>
+                    
+                    <!-- Humedad -->
+                    <div class="flex flex-col items-center group">
+                        <div class="p-3 bg-slate-800 rounded-2xl mb-4 group-hover:bg-slate-700 transition-colors">
+                            <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        </div>
+                        <div class="flex items-start">
+                            <span id="hum-val" class="text-5xl font-bold text-slate-100">--</span>
+                            <span class="text-xl text-slate-400 ml-1 mt-1">%</span>
+                        </div>
+                        <span class="text-xs text-slate-500 uppercase tracking-wider mt-2 font-semibold">Humedad</span>
+                    </div>
+                </div>
+                
+                <div class="mt-8 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 flex items-center gap-2">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span id="clima-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden"></span>
+                      <span id="clima-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-500"></span>
+                    </span>
+                    <span id="clima-status" class="text-slate-300 text-xs font-medium">Última actualización: --</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Banner de Error -->
+        <div id="error-banner" class="hidden mt-8 bg-red-900/30 border border-red-500/50 backdrop-blur-sm text-red-200 px-5 py-4 rounded-xl flex items-center justify-center shadow-lg transition-all">
+            <svg class="w-6 h-6 mr-3 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+            <span class="font-medium">Error de conexión con la API de Backend. Reintentando...</span>
+        </div>
+    </div>
+
+    <!-- Script Vanilla JS -->
+    <script>
+        // Configuración
+        const API_URL = 'http://127.0.0.1:8000/api/dashboard';
+        const MAX_CARROS = 5;
+
+        // Referencias al DOM
+        const ui = {
+            carrosCount: document.getElementById('carros-count'),
+            ocupacionCircle: document.getElementById('ocupacion-circle'),
+            ocupacionStatus: document.getElementById('ocupacion-status'),
+            tempVal: document.getElementById('temp-val'),
+            humVal: document.getElementById('hum-val'),
+            climaStatus: document.getElementById('clima-status'),
+            climaPing: document.getElementById('clima-ping'),
+            climaDot: document.getElementById('clima-dot'),
+            errorBanner: document.getElementById('error-banner')
+        };
+
+        // Función para consultar la API
+        async function fetchDashboard() {
+            try {
+                // Fetch Data
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                
+                // --- 1. Actualizar Tarjeta de Ocupación ---
+                const carros = data.carros_actuales;
+                ui.carrosCount.textContent = carros;
+                
+                // Reiniciar clases dinámicas
+                ui.ocupacionCircle.className = 'relative flex items-center justify-center w-56 h-56 rounded-full border-[10px] shadow-inner transition-colors duration-700 ease-in-out';
+                
+                if (carros >= MAX_CARROS) {
+                    ui.ocupacionCircle.classList.add('border-red-500', 'shadow-red-900/50');
+                    ui.carrosCount.className = 'text-7xl font-black text-red-500 transition-colors duration-700';
+                    ui.ocupacionStatus.textContent = 'ESTACIONAMIENTO LLENO';
+                    ui.ocupacionStatus.className = 'mt-8 px-4 py-1.5 rounded-full bg-red-900/30 text-red-400 border border-red-800 text-sm font-bold tracking-wide';
+                } else if (carros >= MAX_CARROS - 1) {
+                    ui.ocupacionCircle.classList.add('border-yellow-400', 'shadow-yellow-900/50');
+                    ui.carrosCount.className = 'text-7xl font-black text-yellow-400 transition-colors duration-700';
+                    ui.ocupacionStatus.textContent = 'CASI LLENO';
+                    ui.ocupacionStatus.className = 'mt-8 px-4 py-1.5 rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-800 text-sm font-bold tracking-wide';
+                } else {
+                    ui.ocupacionCircle.classList.add('border-emerald-400', 'shadow-emerald-900/50');
+                    ui.carrosCount.className = 'text-7xl font-black text-emerald-400 transition-colors duration-700';
+                    ui.ocupacionStatus.textContent = 'ESPACIO DISPONIBLE';
+                    ui.ocupacionStatus.className = 'mt-8 px-4 py-1.5 rounded-full bg-emerald-900/30 text-emerald-400 border border-emerald-800 text-sm font-bold tracking-wide';
+                }
+
+                // --- 2. Actualizar Tarjeta de Clima ---
+                const clima = data.ultimo_clima;
+                if (clima && clima.temperatura !== null) {
+                    ui.tempVal.textContent = clima.temperatura.toFixed(1);
+                    ui.humVal.textContent = Math.round(clima.humedad); // Sin decimales para humedad
+                    
+                    if (clima.fecha_hora) {
+                        // El backend manda UTC asumiendo datetime.utcnow
+                        const date = new Date(clima.fecha_hora + "Z");
+                        ui.climaStatus.textContent = 'Última act: ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    }
+                    
+                    // Indicador de conexión verde
+                    ui.climaDot.classList.replace('bg-slate-500', 'bg-emerald-400');
+                    ui.climaDot.classList.replace('bg-red-500', 'bg-emerald-400');
+                    ui.climaPing.classList.remove('hidden');
+                } else {
+                    ui.tempVal.textContent = '--';
+                    ui.humVal.textContent = '--';
+                    ui.climaStatus.textContent = 'Esperando lecturas...';
+                    
+                    ui.climaDot.classList.replace('bg-emerald-400', 'bg-slate-500');
+                    ui.climaDot.classList.replace('bg-red-500', 'bg-slate-500');
+                    ui.climaPing.classList.add('hidden');
+                }
+
+                // --- 3. Ocultar Banner de Error ---
+                ui.errorBanner.classList.add('hidden');
+                
+            } catch (error) {
+                console.error("Error consultando la API:", error);
+                
+                // Modo Fallback Visual (Desconectado)
+                ui.carrosCount.textContent = '--';
+                ui.tempVal.textContent = '--';
+                ui.humVal.textContent = '--';
+                
+                ui.ocupacionCircle.className = 'relative flex items-center justify-center w-56 h-56 rounded-full border-[10px] border-slate-700 shadow-inner transition-colors duration-700';
+                ui.carrosCount.className = 'text-7xl font-black text-slate-500 transition-colors duration-700';
+                
+                ui.ocupacionStatus.textContent = 'SIN CONEXIÓN';
+                ui.ocupacionStatus.className = 'mt-8 px-4 py-1.5 rounded-full bg-slate-800 text-slate-500 border border-slate-700 text-sm font-bold tracking-wide';
+                
+                ui.climaStatus.textContent = 'Sin conexión';
+                ui.climaDot.classList.replace('bg-emerald-400', 'bg-red-500');
+                ui.climaDot.classList.replace('bg-slate-500', 'bg-red-500');
+                ui.climaPing.classList.add('hidden');
+                
+                // Mostrar Banner
+                ui.errorBanner.classList.remove('hidden');
+            }
+        }
+
+        // Ejecutar inmediatamente y luego configurar el intervalo
+        fetchDashboard();
+        setInterval(fetchDashboard, 3000);
+        
+    </script>
+</body>
+</html>
