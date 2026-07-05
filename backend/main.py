@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, Column, Integer, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 # Configuración de Base de Datos
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./parking.db") # Fallback a SQLite para desarrollo local
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:OzTaHttQEWFebtsARSsFpHULHUtiXGix@postgres.railway.internal:5432/railway") # Fallback a SQLite para desarrollo local
 
 # Si se usa SQLite local, se necesita un parámetro especial para check_same_thread
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
