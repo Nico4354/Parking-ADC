@@ -7,6 +7,8 @@
     <title>IoT Parking Dashboard</title>
     <!-- Tailwind CSS desde CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -150,6 +152,20 @@
             </div>
         </div>
 
+        <!-- Gráfica de Historial de Clima -->
+        <div class="mt-8 bg-cardBg rounded-3xl shadow-xl border border-slate-700/50 p-8 flex flex-col items-center justify-center transition-all duration-300 hover:shadow-2xl hover:border-slate-600">
+            <h2 class="text-xl font-semibold text-slate-300 mb-6 flex items-center gap-2 w-full">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                </svg>
+                Historial de Clima (Últimos 15 registros)
+            </h2>
+            <div class="w-full h-72">
+                <canvas id="climaChart"></canvas>
+            </div>
+        </div>
+
         <!-- Banner de Error -->
         <div id="error-banner"
             class="hidden mt-8 bg-red-900/30 border border-red-500/50 backdrop-blur-sm text-red-200 px-5 py-4 rounded-xl flex items-center justify-center shadow-lg transition-all">
@@ -166,6 +182,7 @@
     <script>
         // Configuración
         const API_URL = 'https://parking-adc.onrender.com/api/dashboard';
+        const API_HISTORIAL_URL = 'https://parking-adc.onrender.com/api/clima/historial';
         const MAX_CARROS = 5;
 
         // Referencias al DOM
@@ -297,9 +314,86 @@
             }
         }
 
+        // --- LÓGICA DE CHART.JS ---
+        let climaChartInstance = null;
+
+        async function fetchHistorial() {
+            try {
+                const response = await fetch(API_HISTORIAL_URL);
+                if (!response.ok) return; // Si hay error o falta de endpoint (404), ignora
+                const data = await response.json();
+
+                // Extraer etiquetas y datos (orden cronológico esperado: del más antiguo al más nuevo)
+                const labels = data.map(registro => {
+                    const date = new Date(registro.fecha_hora + "Z");
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                });
+                const tempDatos = data.map(registro => registro.temperatura);
+                const humDatos = data.map(registro => registro.humedad);
+
+                if (!climaChartInstance) {
+                    const ctx = document.getElementById('climaChart').getContext('2d');
+                    Chart.defaults.color = '#94a3b8'; // text-slate-400
+                    climaChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Temperatura (°C)',
+                                    data: tempDatos,
+                                    borderColor: '#ef4444', // red-500
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.4,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Humedad (%)',
+                                    data: humDatos,
+                                    borderColor: '#3b82f6', // blue-500
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    borderWidth: 2,
+                                    tension: 0.4,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: { color: '#cbd5e1' }
+                                },
+                            },
+                            scales: {
+                                x: { grid: { color: '#334155' } },
+                                y: { grid: { color: '#334155' } }
+                            }
+                        }
+                    });
+                } else {
+                    climaChartInstance.data.labels = labels;
+                    climaChartInstance.data.datasets[0].data = tempDatos;
+                    climaChartInstance.data.datasets[1].data = humDatos;
+                    climaChartInstance.update('none'); // Update sin animación que parpadee
+                }
+            } catch (error) {
+                console.error("Error consultando el historial de clima:", error);
+            }
+        }
+
         // Ejecutar inmediatamente y luego configurar el intervalo
         fetchDashboard();
+        fetchHistorial();
         setInterval(fetchDashboard, 3000);
+        setInterval(fetchHistorial, 15000); // Refrescar gráfica cada 15 segundos
 
     </script>
 </body>

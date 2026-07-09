@@ -146,3 +146,10 @@ def obtener_dashboard(db: Session = Depends(get_db)):
         "carros_actuales": carros,
         "ultimo_clima": clima_live
     }
+
+@app.get("/api/clima/historial")
+def obtener_historial_clima(db: Session = Depends(get_db)):
+    # Obtener los últimos 15 registros ordenados por id descendente (o fecha_hora)
+    registros = db.query(RegistroClima).order_by(RegistroClima.id.desc()).limit(15).all()
+    # Invertir para devolverlos en orden cronológico (más antiguo primero)
+    return registros[::-1]
